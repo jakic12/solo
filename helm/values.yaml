@@ -9,8 +9,8 @@ frontend:
   host: solo.yon.si
   image:
     name: plojyon/solo-frontend
-    tag: "8080"
-    pullPolicy: IfNotPresent
+    tag: latest
+    pullPolicy: Always
   port: 8080
   resources:
     requests:
