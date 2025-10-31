@@ -27,5 +27,22 @@ spec:
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
           env:
-            - name: TURN_URI
-              value: {{ .Values.turn.uri | quote }}
+            - name: SIGNALLING_SERVER_URL
+              value: {{ .Values.signalling.uri | quote }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "frontend.fullname" .}}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.frontend.port }}
+      targetPort: {{ .Values.frontend.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "frontend.fullname" . }}
+    instance: {{ .Release.Name }}

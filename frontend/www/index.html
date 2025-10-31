@@ -5,16 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solo</title>
     <style>
-        video {
+        /* --bg-primary: #212121;
+        --bg-primary-inverted: #fff;
+        --bg-secondary: #303030;
+        --bg-tertiary: #414141;
+        --bg-scrim: #0d0d0d80;
+        --bg-elevated-primary: #303030;
+        --bg-elevated-secondary: #181818;
+        --bg-accent-static: #0285ff;
+        --bg-status-warning: #4a2206;
+        --bg-status-error: #4d100e; */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #212121;
+            color: white;
+        }
+        .video-container {
             background-image: url("media/no-signal.gif");
             background-position: center;
+            display: inline-block;
         }
     </style>
 </head>
 <body>
     <h1>Solo</h1>
-    <video id="localVideo" autoplay muted></video>
-    <video id="remoteVideo" autoplay></video>
+    <div class="video-container"><video id="localVideo" autoplay muted></video></div>
+    <div class="video-container"><video id="remoteVideo" autoplay></video></div>
+    <span>Target: <input type="text" name="target" placeholder="(leave blank to advertise)"/></span>
+    <button id="prepare">Prepare</button>
     <button id="startCall">Start Call</button>
     <button id="endCall">End Call</button>
 
@@ -27,9 +45,10 @@
         };
 
         ws.onmessage = (message) => {
+            console.log("WebSocket message received:", message);
             const signal = JSON.parse(message.data);
             if (signal.event === "offer") {
-                handleOffer(signal.data);
+                handleOffer(signal.data, signal.source);
             } else if (signal.event === "answer") {
                 handleAnswer(signal.data);
             } else if (signal.event === "ice") {
@@ -37,17 +56,23 @@
             }
         };
 
-        async function startCall() {
+        async function prepare() {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById("localVideo").srcObject = localStream;
+        }
+
+        async function startCall() {
+            const target = document.querySelector('input[name="target"]').value;
 
             peerConnection = new RTCPeerConnection(config);
             peerConnection.onicecandidate = (event) => {
+                console.log("Offerrer ICE candidate");
                 if (event.candidate) {
-                    ws.send(JSON.stringify({ event: "ice", data: JSON.stringify(event.candidate) }));
+                    ws.send(JSON.stringify({ event: "ice", data: JSON.stringify(event.candidate), target: target }));
                 }
             };
             peerConnection.ontrack = (event) => {
+                console.log("Track event:", event);
                 document.getElementById("remoteVideo").srcObject = event.streams[0];
             };
 
@@ -58,14 +83,16 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            ws.send(JSON.stringify({ event: "offer", data: JSON.stringify(offer) }));
+            ws.send(JSON.stringify({ event: "offer", data: JSON.stringify(offer), target: target }));
         }
 
-        async function handleOffer(offer) {
+        async function handleOffer(offer, target) {
+            console.log("Handling offer:", offer);
             peerConnection = new RTCPeerConnection(config);
             peerConnection.onicecandidate = (event) => {
+                console.log("Accepter ICE candidate");
                 if (event.candidate) {
-                    ws.send(JSON.stringify({ event: "ice", data: JSON.stringify(event.candidate) }));
+                    ws.send(JSON.stringify({ event: "ice", data: JSON.stringify(event.candidate), target: target }));
                 }
             };
             peerConnection.ontrack = (event) => {
@@ -80,14 +107,17 @@
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
 
-            ws.send(JSON.stringify({ event: "answer", data: JSON.stringify(answer) }));
+            console.log("Sending answer:", answer, target);
+            ws.send(JSON.stringify({ event: "answer", data: JSON.stringify(answer), target: target }));
         }
 
         function handleAnswer(answer) {
+            console.log("Handling answer");
             peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(answer)));
         }
 
         function handleIce(candidate) {
+            console.log("Remote ICE candidate");
             peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(candidate)));
         }
         function endCall() {
@@ -103,6 +133,7 @@
             document.getElementById("localVideo").srcObject = null; // Remove video feed
             document.getElementById("remoteVideo").srcObject = null;
         }
+        document.getElementById("prepare").addEventListener("click", prepare);
         document.getElementById("startCall").addEventListener("click", startCall);
         document.getElementById("endCall").addEventListener("click", endCall);
     </script>

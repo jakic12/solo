@@ -17,6 +17,17 @@ frontend:
       cpu: "100m"
       memory: "128Mi"
 
-turn:
-  uri: "turn.solo.yon.si"
-
+signalling:
+  replicas: 1
+  host: solo.yon.si
+  ws:
+    path: ws
+    port: 3000
+  image:
+    name: plojyon/solo-signal
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"

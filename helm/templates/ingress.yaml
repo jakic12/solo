@@ -19,4 +19,10 @@ spec:
                 name: {{ include "frontend.fullname" . }}
                 port:
                   number: {{ .Values.frontend.port }}
-
+          - path: /{{ .Values.signalling.ws.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "signalling.fullname" . }}
+                port:
+                  number: {{ .Values.signalling.ws.port }}

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "signalling.fullname" . }}
+  labels:
+    app: {{ include "signalling.fullname" . }}
+    instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.signalling.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "signalling.fullname" . }}
+      instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "signalling.fullname" . }}
+        instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: signalling
+          image: {{ printf "%s:%s" .Values.signalling.image.name .Values.signalling.image.tag }}
+          imagePullPolicy: {{ .Values.signalling.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.signalling.ws.port }}
+              name: ws
+          resources:
+            {{- toYaml .Values.signalling.resources | nindent 12 }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "signalling.fullname" .}}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.signalling.ws.port }}
+      targetPort: {{ .Values.signalling.ws.port }}
+      protocol: TCP
+      name: ws
+  selector:
+    app: {{ include "signalling.fullname" . }}
+    instance: {{ .Release.Name }}
